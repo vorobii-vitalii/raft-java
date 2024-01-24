@@ -1,0 +1,54 @@
+version: '3.7'
+services:
+
+  server1:
+    ports:
+      - "3100:3100"
+    build:
+      context: server
+      dockerfile: Dockerfile
+    volumes:
+      - /home/vitaliivorobii/workspace/raft-implementation/data1:/data
+    networks:
+      net:
+    environment:
+      - "PORT=3100"
+      - "PERSISTENCE_FOLDER=/data"
+      - "CURRENT_SERVER_ID=1"
+      - "CLUSTER=1=server1:3100,2=server2:3101,3=server3:3102"
+
+  server2:
+    ports:
+      - "3101:3101"
+    build:
+      context: server
+      dockerfile: Dockerfile
+    volumes:
+      - /home/vitaliivorobii/workspace/raft-implementation/data2:/data
+    networks:
+      net:
+    environment:
+      - "PORT=3101"
+      - "PERSISTENCE_FOLDER=/data"
+      - "CURRENT_SERVER_ID=2"
+      - "CLUSTER=1=server1:3100,2=server2:3101,3=server3:3102"
+
+  server3:
+    ports:
+      - "3102:3102"
+    build:
+      context: server
+      dockerfile: Dockerfile
+    restart: on-failure
+    volumes:
+      - /home/vitaliivorobii/workspace/raft-implementation/data3:/data
+    networks:
+      net:
+    environment:
+      - "PORT=3102"
+      - "PERSISTENCE_FOLDER=/data"
+      - "CURRENT_SERVER_ID=2"
+      - "CLUSTER=1=server1:3100,2=server2:3101,3=server3:3102"
+
+networks:
+  net:

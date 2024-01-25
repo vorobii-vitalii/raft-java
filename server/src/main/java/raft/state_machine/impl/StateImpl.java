@@ -25,6 +25,7 @@ public class StateImpl implements State {
 		var messageType = message.getType();
 		var messageProcessor = messageProcessorByType.get(messageType);
 		if (messageProcessor != null) {
+			LOGGER.info("Processing message!");
 			messageProcessor.process(message, messageHandler);
 		} else {
 			LOGGER.warn("Ignoring message of type {}", messageType);

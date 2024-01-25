@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import raft.domain.NodeState;
+import raft.state_machine.State;
 import raft.state_machine.StateFactory;
 
 public class StateFactoryImpl implements StateFactory {

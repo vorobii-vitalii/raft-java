@@ -46,7 +46,7 @@ public class CandidateVoteReplyReceivedHandler implements RaftMessageProcessor {
 				LOGGER.info("Majority not voted for me. I am follower 😩");
 				messageHandler.changeState(NodeState.FOLLOWER);
 			}
-			case NOT_DECIDED ->  {
+			case NOT_DECIDED -> {
 				LOGGER.info("Election result is not yet decided!");
 			}
 		}

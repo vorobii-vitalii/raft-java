@@ -49,9 +49,12 @@ public class FollowerAppendEntriesRequestMessageHandler implements RaftMessagePr
 				if (leaderTerm > currentTerm) {
 					LOGGER.info("Leader term higher ({} > {})! Going to change my term and vote for him", leaderTerm, currentTerm);
 					electionState.updateTerm(leaderTerm);
-					electionState.voteFor(appendEntriesRequest.getLeaderId());
 					logStorage.removeUncommittedChanges();
 				}
+				var leaderId = appendEntriesRequest.getLeaderId();
+				electionState.voteFor(leaderId);
+				followerStateData.updateLeader(leaderId);
+				followerStateData.updateHeartBeat();
 				try {
 					boolean success = logStorage.appendLog(getPreviousLog(appendEntriesRequest), appendEntriesRequest.getEntriesList());
 					LOGGER.info("Logs added = {} 😄", success);
@@ -59,7 +62,6 @@ public class FollowerAppendEntriesRequestMessageHandler implements RaftMessagePr
 							.setSuccess(success)
 							.setTerm(leaderTerm)
 							.build());
-					followerStateData.updateHeartBeat();
 					logStorage.applyAllChangesUntil(getLeaderCurrentLogId(appendEntriesRequest));
 				}
 				catch (IOException e) {

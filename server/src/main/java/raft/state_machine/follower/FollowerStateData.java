@@ -21,11 +21,13 @@ public class FollowerStateData {
 
 	public FollowerStateData(Clock clock) {
 		this.clock = clock;
-		lastHeartBeat.set(clock.instant());
+	}
+
+	public void resetLeader() {
+		currentLeader.set(LEADER_NOT_CHOSEN);
 	}
 
 	public void updateLeader(int leaderId) {
-		assert leaderId >= 0;
 		currentLeader.set(leaderId);
 	}
 
@@ -39,10 +41,6 @@ public class FollowerStateData {
 
 	public void updateHeartBeat() {
 		lastHeartBeat.set(clock.instant());
-	}
-
-	public Instant getLastHeartBeat() {
-		return lastHeartBeat.get();
 	}
 
 	public void setHeartBeatCheckTask(CancellableTask task) {

@@ -45,7 +45,7 @@ public class FollowerRequestVoteRequestMessageHandler implements RaftMessageProc
 				if (requestVote.getCandidateTerm() > currentTerm) {
 					LOGGER.info("Candidate term higher ({} > {})! Going to change my term", requestVote.getCandidateTerm(), currentTerm);
 					electionState.updateTerm(requestVote.getCandidateTerm());
-					followerStateData.updateHeartBeat();
+					followerStateData.resetLeader();
 				}
 				int term = Math.max(requestVote.getCandidateTerm(), currentTerm);
 				electionState.getVotedForInCurrentTerm()
@@ -68,13 +68,13 @@ public class FollowerRequestVoteRequestMessageHandler implements RaftMessageProc
 																	followerStateData.updateHeartBeat();
 																	electionState.voteFor(requestVote.getCandidateId());
 																	replyConsumer.accept(RequestVoteReply.newBuilder()
-																			.setTerm(currentTerm)
+																			.setTerm(term)
 																			.setVoteGranted(true)
 																			.build());
 																} else {
 																	LOGGER.info("Rejecting request vote request since my log is newer!");
 																	replyConsumer.accept(RequestVoteReply.newBuilder()
-																			.setTerm(currentTerm)
+																			.setTerm(term)
 																			.setVoteGranted(false)
 																			.build());
 																}

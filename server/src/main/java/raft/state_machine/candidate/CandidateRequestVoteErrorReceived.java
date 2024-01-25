@@ -10,26 +10,31 @@ import raft.message.RaftMessage;
 import raft.message.RequestVoteErrorReceived;
 import raft.messaging.impl.MessageHandler;
 import raft.state_machine.RaftMessageProcessor;
+import raft.state_machine.candidate.domain.ElectionStats;
+import raft.state_machine.candidate.domain.ElectionStatus;
+import raft.storage.ElectionState;
 import raft.utils.RaftUtils;
 
 public class CandidateRequestVoteErrorReceived implements RaftMessageProcessor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CandidateRequestVoteErrorReceived.class);
+	private final ElectionStats electionStats;
 
-	private final Set<Integer> notVotedForMe;
-	private final Set<Integer> allServerIds;
-
-	public CandidateRequestVoteErrorReceived(Set<Integer> notVotedForMe, Set<Integer> allServerIds) {
-		this.notVotedForMe = notVotedForMe;
-		this.allServerIds = allServerIds;
+	public CandidateRequestVoteErrorReceived(ElectionStats electionStats) {
+		this.electionStats = electionStats;
 	}
 
 	@Override
 	public void process(RaftMessage message, MessageHandler messageHandler) {
 		var requestVoteErrorReceived = (RequestVoteErrorReceived) message;
-		notVotedForMe.add(requestVoteErrorReceived.serverId());
-		if (RaftUtils.isQuorum(allServerIds, notVotedForMe)) {
-			LOGGER.info("Majority not voted for me {} / {}. I am follower 😩", notVotedForMe, allServerIds);
+		var serverId = requestVoteErrorReceived.serverId();
+		electionStats.receiveRejection(serverId);
+		var electionStatus = electionStats.getStatus();
+		LOGGER.info("Server {} failed to respond on request vote. Election status = {}", serverId, electionStatus);
+		if (electionStatus == ElectionStatus.LOST) {
+			LOGGER.info("Majority not voted for me. I am follower 😩");
 			messageHandler.changeState(NodeState.FOLLOWER);
+		} else {
+			LOGGER.info("Election result not yet decided!");
 		}
 	}
 }

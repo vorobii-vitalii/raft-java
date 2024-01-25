@@ -9,6 +9,7 @@ import raft.message.RaftMessage;
 import raft.messaging.impl.MessageHandler;
 import raft.scheduling.CancellableTask;
 import raft.state_machine.RaftMessageProcessor;
+import raft.state_machine.candidate.domain.CandidateStateData;
 
 public class CandidateResourceReleaser implements RaftMessageProcessor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CandidateResourceReleaser.class);

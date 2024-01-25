@@ -24,10 +24,13 @@ public class CandidateAddLogHandler implements RaftMessageProcessor {
 
 	@Override
 	public void process(RaftMessage message, MessageHandler messageHandler) {
-		LOGGER.warn("Leader not yet chosen. Going to reject add log request :(");
+		LOGGER.warn("Leader not yet chosen. Going to reject add log request 😓");
 		var addLog = (AddLog) message;
 		try {
-			var appendLogReply = AppendLogReply.newBuilder().setTerm(electionState.getCurrentTerm()).setSuccess(false).build();
+			var appendLogReply = AppendLogReply.newBuilder()
+					.setTerm(electionState.getCurrentTerm())
+					.setSuccess(false)
+					.build();
 			addLog.replyConsumer().accept(appendLogReply);
 		}
 		catch (IOException e) {

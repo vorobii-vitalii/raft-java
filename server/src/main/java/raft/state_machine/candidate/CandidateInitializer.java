@@ -2,14 +2,13 @@ package raft.state_machine.candidate;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Set;
 
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import raft.cluster.ClusterConfig;
 import raft.cluster.ClusterRPCService;
-import raft.dto.LogId;
 import raft.dto.RequestVote;
 import raft.dto.RequestVoteReply;
 import raft.message.ElectionTimeout;
@@ -20,6 +19,8 @@ import raft.messaging.MessagePublisher;
 import raft.messaging.impl.MessageHandler;
 import raft.scheduling.TimedMessageSender;
 import raft.state_machine.RaftMessageProcessor;
+import raft.state_machine.candidate.domain.CandidateStateData;
+import raft.state_machine.candidate.domain.ElectionStats;
 import raft.storage.ElectionState;
 import raft.storage.LogStorage;
 import reactor.core.CoreSubscriber;
@@ -27,10 +28,9 @@ import reactor.core.CoreSubscriber;
 public class CandidateInitializer implements RaftMessageProcessor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CandidateInitializer.class);
 
-	private final Set<Integer> votedForMe;
 	private final ElectionState electionState;
-	private final int currentServerId;
-	private final Set<Integer> allServerIds;
+	private final ElectionStats electionStats;
+	private final ClusterConfig clusterConfig;
 	private final ClusterRPCService clusterRPCService;
 	private final MessagePublisher<RaftMessage> raftMessagePublisher;
 	private final LogStorage logStorage;
@@ -39,10 +39,9 @@ public class CandidateInitializer implements RaftMessageProcessor {
 	private final CandidateStateData candidateState;
 
 	public CandidateInitializer(
-			Set<Integer> votedForMe,
 			ElectionState electionState,
-			int currentServerId,
-			Set<Integer> allServerIds,
+			ElectionStats electionStats,
+			ClusterConfig clusterConfig,
 			ClusterRPCService clusterRPCService,
 			MessagePublisher<RaftMessage> raftMessagePublisher,
 			LogStorage logStorage,
@@ -50,10 +49,9 @@ public class CandidateInitializer implements RaftMessageProcessor {
 			int electionTimeout,
 			CandidateStateData candidateState
 	) {
-		this.votedForMe = votedForMe;
 		this.electionState = electionState;
-		this.currentServerId = currentServerId;
-		this.allServerIds = allServerIds;
+		this.electionStats = electionStats;
+		this.clusterConfig = clusterConfig;
 		this.clusterRPCService = clusterRPCService;
 		this.raftMessagePublisher = raftMessagePublisher;
 		this.logStorage = logStorage;
@@ -65,20 +63,18 @@ public class CandidateInitializer implements RaftMessageProcessor {
 	@Override
 	public void process(RaftMessage message, MessageHandler messageHandler) {
 		try {
+			var currentServerId = clusterConfig.getCurrentServerId();
 			LOGGER.info("Incrementing current term and voting for myself ({})", currentServerId);
-			votedForMe.add(currentServerId);
+			electionStats.receiveVote(currentServerId);
 			var prevTerm = electionState.getCurrentTerm();
 			LOGGER.info("Previous term was {}", prevTerm);
-			var currentTerm = prevTerm + 1;
-			electionState.updateTerm(currentTerm);
+			var newTerm = prevTerm + 1;
+			electionState.updateTerm(newTerm);
 			electionState.voteFor(currentServerId);
-			LOGGER.info("Requesting votes from all servers {} except {}", allServerIds, currentServerId);
-			for (var serverId : allServerIds) {
-				if (serverId == currentServerId) {
-					LOGGER.info("Skipping myself");
-					continue;
-				}
-				requestVote(serverId, currentTerm);
+			LOGGER.info("Requesting votes from {}", clusterConfig.getOtherServerIds());
+			var requestVote = createRequestVote(newTerm);
+			for (var serverId : clusterConfig.getOtherServerIds()) {
+				requestVote(serverId, requestVote, newTerm);
 			}
 			LOGGER.info("Scheduling election timeout!");
 			candidateState.setElectionTimeoutTask(timedMessageSender.scheduleOnce(electionTimeout, ElectionTimeout::new));
@@ -88,11 +84,9 @@ public class CandidateInitializer implements RaftMessageProcessor {
 		}
 	}
 
-	private void requestVote(Integer serverId, int currentTerm) throws IOException {
-		var requestVote = createRequestVote(currentTerm);
+	private void requestVote(Integer serverId, RequestVote requestVote, int currentTerm) throws IOException {
 		LOGGER.info("Requesting vote from {}", serverId);
-		clusterRPCService
-				.requestVote(serverId, requestVote)
+		clusterRPCService.requestVote(serverId, requestVote)
 				.subscribe(new CoreSubscriber<>() {
 					@Override
 					public void onSubscribe(Subscription subscription) {
@@ -119,13 +113,8 @@ public class CandidateInitializer implements RaftMessageProcessor {
 	}
 
 	private RequestVote createRequestVote(int currentTerm) throws IOException {
-		LogId logId = logStorage.getLastAppliedLog().orElse(null);
-		var builder = RequestVote.newBuilder()
-				.setCandidateTerm(currentTerm)
-				.setCandidateId(currentServerId);
-		if (logId != null) {
-			builder.setLastLog(logId);
-		}
+		var builder = RequestVote.newBuilder().setCandidateTerm(currentTerm).setCandidateId(clusterConfig.getCurrentServerId());
+		logStorage.getLastAppliedLog().ifPresent(builder::setLastLog);
 		return builder.build();
 	}
 

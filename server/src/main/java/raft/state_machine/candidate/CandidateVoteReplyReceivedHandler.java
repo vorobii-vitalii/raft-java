@@ -1,7 +1,5 @@
 package raft.state_machine.candidate;
 
-import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,19 +8,14 @@ import raft.message.RaftMessage;
 import raft.message.RequestVoteReplyReceived;
 import raft.messaging.impl.MessageHandler;
 import raft.state_machine.RaftMessageProcessor;
-import raft.utils.RaftUtils;
+import raft.state_machine.candidate.domain.ElectionStats;
 
 public class CandidateVoteReplyReceivedHandler implements RaftMessageProcessor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CandidateRequestVoteHandler.class);
+	private final ElectionStats electionStats;
 
-	private final Set<Integer> allServerIds;
-	private final Set<Integer> votedForMe;
-	private final Set<Integer> notVotedForMe;
-
-	public CandidateVoteReplyReceivedHandler(Set<Integer> allServerIds, Set<Integer> votedForMe, Set<Integer> notVotedForMe) {
-		this.allServerIds = allServerIds;
-		this.votedForMe = votedForMe;
-		this.notVotedForMe = notVotedForMe;
+	public CandidateVoteReplyReceivedHandler(ElectionStats electionStats) {
+		this.electionStats = electionStats;
 	}
 
 	@Override
@@ -32,28 +25,30 @@ public class CandidateVoteReplyReceivedHandler implements RaftMessageProcessor {
 		int serverId = requestVoteReplyReceived.serverId();
 		if (requestVoteReplyReceived.reply().getVoteGranted()) {
 			LOGGER.info("Server {} voted for me! term = {}", serverId, termId);
-			votedForMe.add(serverId);
+			electionStats.receiveVote(serverId);
 		} else {
 			int replyTermId = requestVoteReplyReceived.reply().getTerm();
 			if (replyTermId == termId) {
 				LOGGER.info("Reply term matches {}. But server {} didnt vote for me", replyTermId, serverId);
-				notVotedForMe.add(serverId);
+				electionStats.receiveRejection(serverId);
 			} else {
 				LOGGER.info("Reply term is bigger {}. Becoming follower...", replyTermId);
 				messageHandler.changeState(NodeState.FOLLOWER);
 				return;
 			}
 		}
-		changeStateIfElectionAlreadyWonOrLost(messageHandler);
-	}
-
-	private void changeStateIfElectionAlreadyWonOrLost(MessageHandler messageHandler) {
-		if (RaftUtils.isQuorum(allServerIds, votedForMe)) {
-			LOGGER.info("Majority voted for me {} / {}. I am leader 😃", votedForMe, allServerIds);
-			messageHandler.changeState(NodeState.LEADER);
-		} else if (RaftUtils.isQuorum(allServerIds, notVotedForMe)) {
-			LOGGER.info("Majority not voted for me {} / {}. I am follower 😩", notVotedForMe, allServerIds);
-			messageHandler.changeState(NodeState.FOLLOWER);
+		switch (electionStats.getStatus()) {
+			case WON -> {
+				LOGGER.info("Majority voted for me. I am leader 😃");
+				messageHandler.changeState(NodeState.LEADER);
+			}
+			case LOST -> {
+				LOGGER.info("Majority not voted for me. I am follower 😩");
+				messageHandler.changeState(NodeState.FOLLOWER);
+			}
+			case NOT_DECIDED ->  {
+				LOGGER.info("Election result is not yet decided!");
+			}
 		}
 	}
 }

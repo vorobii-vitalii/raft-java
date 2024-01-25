@@ -1,4 +1,4 @@
-package raft.state_machine.candidate;
+package raft.state_machine.candidate.domain;
 
 import java.util.concurrent.atomic.AtomicReference;
 

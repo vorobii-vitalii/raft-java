@@ -26,7 +26,6 @@ public class CandidateRequestVoteHandler implements RaftMessageProcessor {
 	@Override
 	public void process(RaftMessage message, MessageHandler messageHandler) {
 		var requestVoteRequestMessage = (RequestVoteRequestMessage) message;
-
 		try {
 			var currentTerm = electionState.getCurrentTerm();
 			var requestVote = requestVoteRequestMessage.requestVote();

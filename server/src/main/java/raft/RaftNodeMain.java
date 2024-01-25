@@ -7,7 +7,6 @@ import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,8 +42,9 @@ import raft.state_machine.candidate.CandidateInitializer;
 import raft.state_machine.candidate.CandidateRequestVoteErrorReceived;
 import raft.state_machine.candidate.CandidateRequestVoteHandler;
 import raft.state_machine.candidate.CandidateResourceReleaser;
-import raft.state_machine.candidate.CandidateStateData;
 import raft.state_machine.candidate.CandidateVoteReplyReceivedHandler;
+import raft.state_machine.candidate.domain.CandidateStateData;
+import raft.state_machine.candidate.domain.ElectionStats;
 import raft.state_machine.follower.FollowerAddLogHandler;
 import raft.state_machine.follower.FollowerAppendEntriesRequestMessageHandler;
 import raft.state_machine.follower.FollowerHeartBeatCheckHandler;
@@ -121,23 +121,21 @@ public class RaftNodeMain {
 		var currentServerId = getCurrentServerId();
 		LOGGER.info("Cluster config = {}. Current server = {}", addressByServerId, currentServerId);
 
-		var clusterConfig = new InMemoryClusterConfig(addressByServerId);
+		var clusterConfig = new InMemoryClusterConfig(addressByServerId, currentServerId);
 		var clusterRPCService = new ClusterRPCServiceImpl(clusterConfig);
 
 		var raftMessageMessagePublisher = new BlockingQueueMessagePublisher<>(messagesQueue);
 		Supplier<State> candidateStateSupplier = () -> {
 			var candidateStateData = new CandidateStateData();
-			HashSet<Integer> votedForMe = new HashSet<>();
-			HashSet<Integer> notVotedForMe = new HashSet<>();
+			var electionStats = new ElectionStats(addressByServerId.keySet());
 			return new StateImpl(Map.of(
 					RaftMessageType.AddLog, new CandidateAddLogHandler(electionState),
 					RaftMessageType.AppendEntriesRequestMessage, new CandidateAppendEntriesHandler(electionState),
 					RaftMessageType.ElectionTimeout, new CandidateElectionTimeoutHandler(),
 					RaftMessageType.Initialize, new CandidateInitializer(
-							votedForMe,
 							electionState,
-							currentServerId,
-							addressByServerId.keySet(),
+							electionStats,
+							clusterConfig,
 							clusterRPCService,
 							raftMessageMessagePublisher,
 							logStorage,
@@ -145,21 +143,14 @@ public class RaftNodeMain {
 							ELECTION_TIMEOUT,
 							candidateStateData
 					),
-					RaftMessageType.RequestVoteErrorReceived, new CandidateRequestVoteErrorReceived(
-							notVotedForMe,
-							addressByServerId.keySet()
-					),
+					RaftMessageType.RequestVoteErrorReceived, new CandidateRequestVoteErrorReceived(electionStats),
 					RaftMessageType.RequestVoteRequestMessage, new CandidateRequestVoteHandler(
 							electionState
 					),
 					RaftMessageType.Release, new CandidateResourceReleaser(
 							candidateStateData
 					),
-					RaftMessageType.RequestVoteReplyReceived, new CandidateVoteReplyReceivedHandler(
-							addressByServerId.keySet(),
-							votedForMe,
-							notVotedForMe
-					)
+					RaftMessageType.RequestVoteReplyReceived, new CandidateVoteReplyReceivedHandler(electionStats)
 			));
 		};
 

@@ -2,28 +2,25 @@ package raft.state_machine.leader;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Map;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import raft.dto.LogId;
 import raft.message.RaftMessage;
 import raft.message.SendHeartBeat;
 import raft.messaging.MessagePublisher;
 import raft.messaging.impl.MessageHandler;
 import raft.scheduling.TimedMessageSender;
 import raft.state_machine.RaftMessageProcessor;
+import raft.state_machine.leader.data.LeaderStateData;
+import raft.state_machine.leader.data.ServersReplicationState;
 import raft.storage.LogStorage;
 
 public class LeaderInitializer implements RaftMessageProcessor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LeaderInitializer.class);
 
 	private final LogStorage logStorage;
-	private final Set<Integer> allServerIds;
-	private final int currentServerId;
-	private final Map<Integer, LogId> previousLogIdByServerId;
+	private final ServersReplicationState serversReplicationState;
 	private final MessagePublisher<RaftMessage> raftMessagePublisher;
 	private final TimedMessageSender<RaftMessage> timedMessageSender;
 	private final int heartBeatsInterval;
@@ -31,18 +28,14 @@ public class LeaderInitializer implements RaftMessageProcessor {
 
 	public LeaderInitializer(
 			LogStorage logStorage,
-			Set<Integer> allServerIds,
-			int currentServerId,
-			Map<Integer, LogId> previousLogIdByServerId,
+			ServersReplicationState serversReplicationState,
 			MessagePublisher<RaftMessage> raftMessagePublisher,
 			TimedMessageSender<RaftMessage> timedMessageSender,
 			int heartBeatsInterval,
 			LeaderStateData leaderStateData
 	) {
 		this.logStorage = logStorage;
-		this.allServerIds = allServerIds;
-		this.currentServerId = currentServerId;
-		this.previousLogIdByServerId = previousLogIdByServerId;
+		this.serversReplicationState = serversReplicationState;
 		this.raftMessagePublisher = raftMessagePublisher;
 		this.timedMessageSender = timedMessageSender;
 		this.heartBeatsInterval = heartBeatsInterval;
@@ -55,14 +48,7 @@ public class LeaderInitializer implements RaftMessageProcessor {
 		try {
 			var maxAppliedLogId = logStorage.getLastAppliedLog().orElse(null);
 			LOGGER.info("Max applied log id = {}", maxAppliedLogId);
-			if (maxAppliedLogId != null) {
-				for (var serverId : allServerIds) {
-					if (serverId == currentServerId) {
-						continue;
-					}
-					previousLogIdByServerId.put(serverId, maxAppliedLogId);
-				}
-			}
+			serversReplicationState.initializePreviousLogTable(maxAppliedLogId);
 		}
 		catch (IOException e) {
 			throw new UncheckedIOException(e);

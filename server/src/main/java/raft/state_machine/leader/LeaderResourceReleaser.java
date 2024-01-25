@@ -11,6 +11,7 @@ import raft.message.RaftMessage;
 import raft.messaging.impl.MessageHandler;
 import raft.scheduling.CancellableTask;
 import raft.state_machine.RaftMessageProcessor;
+import raft.state_machine.leader.data.LeaderStateData;
 import raft.storage.LogStorage;
 
 public class LeaderResourceReleaser implements RaftMessageProcessor {

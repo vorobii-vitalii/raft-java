@@ -1,4 +1,4 @@
-package raft.state_machine.leader;
+package raft.state_machine.leader.data;
 
 import java.util.concurrent.atomic.AtomicReference;
 

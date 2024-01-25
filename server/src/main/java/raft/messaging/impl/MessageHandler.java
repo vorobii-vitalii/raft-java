@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import raft.domain.NodeState;
+import raft.message.Initialize;
 import raft.message.RaftMessage;
 import raft.message.ReleaseResources;
 import raft.state_machine.State;
@@ -38,7 +39,7 @@ public class MessageHandler {
 			currentState.onMessage(new ReleaseResources(), this);
 		}
 		currentState = stateFactory.createState(nodeState);
-		currentState.onMessage(new ReleaseResources(), this);
+		currentState.onMessage(new Initialize(), this);
 	}
 
 }

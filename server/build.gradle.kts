@@ -2,20 +2,9 @@ import com.google.protobuf.gradle.*
 
 plugins {
     id("java")
-//    id("io.netifi.flatbuffers") version "1.0.7"
     id("com.google.protobuf") version "0.9.4"
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
-
-//flatbuffers {
-//    flatcPath = "/home/vitaliivorobii/flatbuffers/flatc"
-//    language = "java"
-//}
-//
-//tasks.register<FlatBuffers>("createFlatBuffers") {
-//    outputDir = file("src/generated/flatbuffers")
-////    extraArgs = "--gen-mutable"
-//}
 
 group = "org.example"
 
@@ -34,17 +23,6 @@ tasks.shadowJar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
 }
-
-//tasks.jar {
-//    archiveClassifier.set("all")
-//    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-//    manifest {
-//        attributes("Main-Class" to mainClass)
-//    }
-//    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-//    val sourcesMain = sourceSets.main.get()
-//    from(sourcesMain.output)
-//}
 
 repositories {
     mavenCentral()
@@ -104,7 +82,6 @@ dependencies {
     if (JavaVersion.current().isJava9Compatible) {
         implementation("javax.annotation:javax.annotation-api:1.3.1")
     }
-
     // Logging
     implementation("org.slf4j:slf4j-api:2.1.0-alpha0")
     implementation("ch.qos.logback:logback-classic:1.4.14")

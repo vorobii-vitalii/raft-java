@@ -42,6 +42,7 @@ public class InMemoryClusterConfig implements ClusterConfig {
 					var port = Integer.parseInt(serverAddress.split(ADDRESS_DELIMITER)[1]);
 					LOGGER.info("Creating channel for server {}. Address = {}", serverId, serverAddress);
 					return Grpc.newChannelBuilderForAddress(host, port, InsecureChannelCredentials.create())
+							.enableRetry()
 							.build();
 				});
 	}

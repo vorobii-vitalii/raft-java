@@ -31,20 +31,15 @@ public class LeaderRequestVoteRequestMessageHandler implements RaftMessageProces
 			var requestVote = requestVoteRequestMessage.requestVote();
 			var replyConsumer = requestVoteRequestMessage.replyConsumer();
 			int candidateTerm = requestVote.getCandidateTerm();
-			if (candidateTerm < currentTerm) {
-				LOGGER.warn("Candidate term {} lower than current term {}", candidateTerm, currentTerm);
+			if (candidateTerm <= currentTerm) {
+				LOGGER.warn("Candidate term {} lower or equal than current term {}", candidateTerm, currentTerm);
 				replyConsumer.accept(RequestVoteReply.newBuilder().setTerm(currentTerm).setVoteGranted(false).build());
 			} else {
-				if (requestVote.getCandidateTerm() > currentTerm) {
-					LOGGER.info("Candidate term higher ({} > {})! It means I am not leader 😩", requestVote.getCandidateTerm(), currentTerm);
-					LOGGER.info("Becoming follower...");
-					messageHandler.changeState(NodeState.FOLLOWER);
-					LOGGER.info("Reprocessing message!");
-					messageHandler.onMessage(requestVoteRequestMessage);
-				} else {
-					LOGGER.info("Election on term = {} was won by me. Rejecting request...", currentTerm);
-					replyConsumer.accept(RequestVoteReply.newBuilder().setTerm(currentTerm).setVoteGranted(false).build());
-				}
+				LOGGER.info("Candidate term higher ({} > {})! It means I am not leader 😩", requestVote.getCandidateTerm(), currentTerm);
+				LOGGER.info("Becoming follower...");
+				messageHandler.changeState(NodeState.FOLLOWER);
+				LOGGER.info("Reprocessing message!");
+				messageHandler.onMessage(requestVoteRequestMessage);
 			}
 		}
 		catch (IOException error) {

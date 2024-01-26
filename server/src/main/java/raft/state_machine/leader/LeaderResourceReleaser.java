@@ -29,8 +29,7 @@ public class LeaderResourceReleaser implements RaftMessageProcessor {
 	public void process(RaftMessage message, MessageHandler messageHandler) {
 		try {
 			LOGGER.info("Stopping heart beat task...");
-			Optional.ofNullable(leaderStateData.getHeartBeatTask())
-					.ifPresent(CancellableTask::cancel);
+			Optional.ofNullable(leaderStateData.getHeartBeatTask()).ifPresent(CancellableTask::cancel);
 			LOGGER.info("Removing all uncommitted changes");
 			logStorage.removeUncommittedChanges();
 		}

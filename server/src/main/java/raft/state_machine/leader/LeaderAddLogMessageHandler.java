@@ -62,7 +62,8 @@ public class LeaderAddLogMessageHandler implements RaftMessageProcessor {
 				if (serversReplicationState.isCurrentlyReplicating(serverId)) {
 					LOGGER.info("Server {} is currently replicating some logs. This log will be written to it eventually", serverId);
 				} else {
-					LOGGER.info("Will immediately replicate the log to {}", serverId);
+					LOGGER.info("Will immediately replicate the log to {} and start its replication", serverId);
+					serversReplicationState.startReplication(serverId);
 					logAppender.appendLog(serverId, nextLog, lastLog);
 				}
 			}

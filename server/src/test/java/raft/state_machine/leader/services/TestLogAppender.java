@@ -1,5 +1,6 @@
 package raft.state_machine.leader.services;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -12,7 +13,10 @@ import raft.cluster.ClusterConfig;
 import raft.cluster.ClusterRPCService;
 import raft.dto.AppendEntriesReply;
 import raft.dto.AppendEntriesRequest;
+import raft.dto.Log;
 import raft.dto.LogId;
+import raft.message.AppendEntriesErrorMessage;
+import raft.message.AppendEntriesReplyMessage;
 import raft.message.RaftMessage;
 import raft.messaging.MessagePublisher;
 import raft.storage.ElectionState;
@@ -44,11 +48,74 @@ class TestLogAppender {
 				.setLeaderId(CURRENT_SERVER_ID)
 				.setTerm(CURRENT_TERM)
 				.setPreviousLog(PREV_LOG)
+				.addEntries(Log.newBuilder().setId(NEXT_LOG).setMsg("next").build())
 				.build()
 		)).thenReturn(Mono.just(AppendEntriesReply.newBuilder().setSuccess(true).build()));
 
-		// TODO
-		logAppender.appendLog(RECEIVER_SERVER, NEXT_LOG, PREV_LOG);
-
+		logAppender.appendLog(
+				RECEIVER_SERVER,
+				Log.newBuilder().setId(NEXT_LOG).setMsg("next").build(),
+				Log.newBuilder().setId(PREV_LOG).setMsg("prev").build());
+		verify(raftMessagePublisher).publish(
+				new AppendEntriesReplyMessage(
+						AppendEntriesReply.newBuilder().setSuccess(true).build(),
+						Log.newBuilder().setId(NEXT_LOG).setMsg("next").build(),
+						Log.newBuilder().setId(PREV_LOG).setMsg("prev").build(),
+						RECEIVER_SERVER
+				));
 	}
+
+	@Test
+	void appendLogGivenLogStorageEmptyFailureCase() throws IOException {
+		when(clusterConfig.getCurrentServerId()).thenReturn(CURRENT_SERVER_ID);
+		when(electionState.getCurrentTerm()).thenReturn(CURRENT_TERM);
+		when(logStorage.getLastAppliedLog()).thenReturn(Optional.empty());
+		when(clusterRPCService.appendLog(RECEIVER_SERVER, AppendEntriesRequest.newBuilder()
+				.setLeaderId(CURRENT_SERVER_ID)
+				.setTerm(CURRENT_TERM)
+				.setPreviousLog(PREV_LOG)
+				.addEntries(Log.newBuilder().setId(NEXT_LOG).setMsg("next").build())
+				.build()
+		)).thenReturn(Mono.error(new RuntimeException()));
+
+		logAppender.appendLog(
+				RECEIVER_SERVER,
+				Log.newBuilder().setId(NEXT_LOG).setMsg("next").build(),
+				Log.newBuilder().setId(PREV_LOG).setMsg("prev").build());
+		verify(raftMessagePublisher).publish(
+				new AppendEntriesErrorMessage(
+						RECEIVER_SERVER,
+						Log.newBuilder().setId(PREV_LOG).setMsg("prev").build(),
+						Log.newBuilder().setId(NEXT_LOG).setMsg("next").build()
+				));
+	}
+
+	@Test
+	void appendLogGivenLogStorageNotEmptyHappyPath() throws IOException {
+		when(clusterConfig.getCurrentServerId()).thenReturn(CURRENT_SERVER_ID);
+		when(electionState.getCurrentTerm()).thenReturn(CURRENT_TERM);
+		when(logStorage.getLastAppliedLog())
+				.thenReturn(Optional.of(LogId.newBuilder().setIndex(0).setTerm(CURRENT_TERM).build()));
+		when(clusterRPCService.appendLog(RECEIVER_SERVER, AppendEntriesRequest.newBuilder()
+				.setLeaderId(CURRENT_SERVER_ID)
+				.setTerm(CURRENT_TERM)
+				.setPreviousLog(PREV_LOG)
+				.setLeaderCurrentLogId(LogId.newBuilder().setIndex(0).setTerm(CURRENT_TERM).build())
+				.addEntries(Log.newBuilder().setId(NEXT_LOG).setMsg("next").build())
+				.build()
+		)).thenReturn(Mono.just(AppendEntriesReply.newBuilder().setSuccess(true).build()));
+
+		logAppender.appendLog(
+				RECEIVER_SERVER,
+				Log.newBuilder().setId(NEXT_LOG).setMsg("next").build(),
+				Log.newBuilder().setId(PREV_LOG).setMsg("prev").build());
+		verify(raftMessagePublisher).publish(
+				new AppendEntriesReplyMessage(
+						AppendEntriesReply.newBuilder().setSuccess(true).build(),
+						Log.newBuilder().setId(NEXT_LOG).setMsg("next").build(),
+						Log.newBuilder().setId(PREV_LOG).setMsg("prev").build(),
+						RECEIVER_SERVER
+				));
+	}
+
 }

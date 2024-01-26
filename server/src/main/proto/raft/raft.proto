@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+option java_package = "raft.dto";
+option java_outer_classname = "Raft";
+option java_multiple_files = true;
+
+package raft;
+
+// DTOs
+
+message LogId {
+  int32 index = 1;
+  int32 term = 2;
+}
+
+message Log {
+  LogId id = 1;
+  string msg = 2;
+}
+
+// Append RPC
+
+message AppendEntriesRequest {
+  int32 leaderId = 1;
+  LogId leaderCurrentLogId = 2;
+  LogId previousLog = 3;
+  repeated Log entries = 4;
+  int32 term = 5;
+}
+
+message AppendEntriesReply {
+  int32 term = 1;
+  bool success = 2;
+}
+
+// Request vote
+
+message RequestVote {
+  int32 candidateId = 1;
+  int32 candidateTerm = 2;
+  LogId lastLog = 3;
+}
+
+message RequestVoteReply {
+  int32 term = 1;
+  bool voteGranted = 2;
+}
+
+
+// Service for inter-node communication
+service RaftService {
+  rpc appendEntries(AppendEntriesRequest) returns (AppendEntriesReply) {}
+  rpc requestVote(RequestVote) returns (RequestVoteReply) {}
+}
+
+// Simple example of Raft usage (simple log replication)
+
+message AppendLogRequest {
+  string message = 1;
+}
+
+message AppendLogReply {
+  bool success = 1;
+  int32 term = 2;
+  int32 leaderId = 3;
+}
+
+message FetchLogsRequest {
+}
+
+message FetchLogsResponse {
+  repeated string log = 1;
+}
+
+service LogsService {
+  rpc appendLog(AppendLogRequest) returns (AppendLogReply) {}
+  rpc fetchAllLogs(FetchLogsRequest) returns (FetchLogsResponse) {}
+}

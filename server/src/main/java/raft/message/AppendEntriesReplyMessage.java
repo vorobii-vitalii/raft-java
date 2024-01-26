@@ -6,6 +6,6 @@ import raft.dto.Log;
 public record AppendEntriesReplyMessage(AppendEntriesReply reply, Log nextLog, Log previousLog, int serverId) implements RaftMessage {
 	@Override
 	public RaftMessageType getType() {
-		return RaftMessageType.AppendEntriesReplyMessage;
+		return RaftMessageType.APPEND_ENTRIES_REPLY_MESSAGE;
 	}
 }

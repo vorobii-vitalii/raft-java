@@ -1,16 +1,16 @@
 package raft.message;
 
 public enum RaftMessageType {
-	AddLog,
-	AppendEntriesErrorMessage,
-	AppendEntriesReplyMessage,
-	AppendEntriesRequestMessage,
-	ElectionTimeout,
-	HeartBeatCheck,
-	RequestVoteErrorReceived,
-	RequestVoteReplyReceived,
-	RequestVoteRequestMessage,
-	SendHeartBeat,
-	Initialize,
-	Release
+	ADD_LOG,
+	APPEND_ENTRIES_ERROR_MESSAGE,
+	APPEND_ENTRIES_REPLY_MESSAGE,
+	APPEND_ENTRIES_REQUEST_MESSAGE,
+	ELECTION_TIMEOUT,
+	HEART_BEAT_CHECK,
+	REQUEST_VOTE_ERROR_RECEIVED,
+	REQUEST_VOTE_REPLY_RECEIVED,
+	REQUEST_VOTE_REQUEST_MESSAGE,
+	SEND_HEART_BEAT,
+	INITIALIZE,
+	RELEASE
 }

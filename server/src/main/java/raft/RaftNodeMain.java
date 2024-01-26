@@ -130,10 +130,10 @@ public class RaftNodeMain {
 			var candidateStateData = new CandidateStateData();
 			var electionStats = new ElectionStats(addressByServerId.keySet());
 			return new StateImpl(Map.of(
-					RaftMessageType.AddLog, new CandidateAddLogHandler(electionState),
-					RaftMessageType.AppendEntriesRequestMessage, new CandidateAppendEntriesHandler(electionState),
-					RaftMessageType.ElectionTimeout, new CandidateElectionTimeoutHandler(),
-					RaftMessageType.Initialize, new CandidateInitializer(
+					RaftMessageType.ADD_LOG, new CandidateAddLogHandler(electionState),
+					RaftMessageType.APPEND_ENTRIES_REQUEST_MESSAGE, new CandidateAppendEntriesHandler(electionState),
+					RaftMessageType.ELECTION_TIMEOUT, new CandidateElectionTimeoutHandler(),
+					RaftMessageType.INITIALIZE, new CandidateInitializer(
 							electionState,
 							electionStats,
 							clusterConfig,
@@ -144,14 +144,14 @@ public class RaftNodeMain {
 							ELECTION_TIMEOUT,
 							candidateStateData
 					),
-					RaftMessageType.RequestVoteErrorReceived, new CandidateRequestVoteErrorReceived(electionStats),
-					RaftMessageType.RequestVoteRequestMessage, new CandidateRequestVoteHandler(
+					RaftMessageType.REQUEST_VOTE_ERROR_RECEIVED, new CandidateRequestVoteErrorReceived(electionStats),
+					RaftMessageType.REQUEST_VOTE_REQUEST_MESSAGE, new CandidateRequestVoteHandler(
 							electionState
 					),
-					RaftMessageType.Release, new CandidateResourceReleaser(
+					RaftMessageType.RELEASE, new CandidateResourceReleaser(
 							candidateStateData
 					),
-					RaftMessageType.RequestVoteReplyReceived, new CandidateVoteReplyReceivedHandler(electionStats)
+					RaftMessageType.REQUEST_VOTE_REPLY_RECEIVED, new CandidateVoteReplyReceivedHandler(electionStats)
 			));
 		};
 
@@ -159,30 +159,30 @@ public class RaftNodeMain {
 			FollowerStateData followerStateData = new FollowerStateData(Clock.systemDefaultZone());
 
 			return new StateImpl(Map.of(
-					RaftMessageType.AddLog, new FollowerAddLogHandler(
+					RaftMessageType.ADD_LOG, new FollowerAddLogHandler(
 							followerStateData,
 							electionState
 					),
-					RaftMessageType.AppendEntriesRequestMessage, new FollowerAppendEntriesRequestMessageHandler(
+					RaftMessageType.APPEND_ENTRIES_REQUEST_MESSAGE, new FollowerAppendEntriesRequestMessageHandler(
 							electionState,
 							logStorage,
 							followerStateData
 					),
-					RaftMessageType.HeartBeatCheck, new FollowerHeartBeatCheckHandler(
+					RaftMessageType.HEART_BEAT_CHECK, new FollowerHeartBeatCheckHandler(
 							getHearbeatTimeout(),
 							followerStateData
 					),
-					RaftMessageType.Initialize, new FollowerInitializer(
+					RaftMessageType.INITIALIZE, new FollowerInitializer(
 							followerStateData,
 							new TimedMessageSenderImpl<>(timedTaskScheduler, raftMessageMessagePublisher),
 							HEART_BEAT_CHECK_TIMEOUT
 					),
-					RaftMessageType.RequestVoteRequestMessage, new FollowerRequestVoteRequestMessageHandler(
+					RaftMessageType.REQUEST_VOTE_REQUEST_MESSAGE, new FollowerRequestVoteRequestMessageHandler(
 							electionState,
 							followerStateData,
 							logStorage
 					),
-					RaftMessageType.Release, new FollowerResourceReleaser(
+					RaftMessageType.RELEASE, new FollowerResourceReleaser(
 							followerStateData
 					)
 			));
@@ -194,8 +194,8 @@ public class RaftNodeMain {
 			var logAppender = new LogAppender(clusterConfig, logStorage, electionState, clusterRPCService, raftMessageMessagePublisher);
 			var logIdGenerator = new LogIdGenerator(logStorage, electionState);
 			return new StateImpl(Map.of(
-					RaftMessageType.AppendEntriesErrorMessage, new LeaderAppendEntriesErrorMessageHandler(logAppender),
-					RaftMessageType.AddLog, new LeaderAddLogMessageHandler(
+					RaftMessageType.APPEND_ENTRIES_ERROR_MESSAGE, new LeaderAppendEntriesErrorMessageHandler(logAppender),
+					RaftMessageType.ADD_LOG, new LeaderAddLogMessageHandler(
 							logStorage,
 							electionState,
 							logAppender,
@@ -203,16 +203,16 @@ public class RaftNodeMain {
 							clusterConfig,
 							serversReplicationState
 					),
-					RaftMessageType.AppendEntriesRequestMessage, new LeaderAppendEntriesHandler(
+					RaftMessageType.APPEND_ENTRIES_REQUEST_MESSAGE, new LeaderAppendEntriesHandler(
 							electionState
 					),
-					RaftMessageType.AppendEntriesReplyMessage, new LeaderAppendEntriesReplyMessageHandler(
+					RaftMessageType.APPEND_ENTRIES_REPLY_MESSAGE, new LeaderAppendEntriesReplyMessageHandler(
 							electionState,
 							logStorage,
 							serversReplicationState,
 							logAppender
 					),
-					RaftMessageType.Initialize, new LeaderInitializer(
+					RaftMessageType.INITIALIZE, new LeaderInitializer(
 							logStorage,
 							serversReplicationState,
 							raftMessageMessagePublisher,
@@ -220,14 +220,14 @@ public class RaftNodeMain {
 							getHeartBeatsInterval(),
 							leaderStateData
 					),
-					RaftMessageType.RequestVoteRequestMessage, new LeaderRequestVoteRequestMessageHandler(
+					RaftMessageType.REQUEST_VOTE_REQUEST_MESSAGE, new LeaderRequestVoteRequestMessageHandler(
 							electionState
 					),
-					RaftMessageType.Release, new LeaderResourceReleaser(
+					RaftMessageType.RELEASE, new LeaderResourceReleaser(
 							leaderStateData,
 							logStorage
 					),
-					RaftMessageType.SendHeartBeat, new LeaderSendHeartBeatHandler(
+					RaftMessageType.SEND_HEART_BEAT, new LeaderSendHeartBeatHandler(
 							logStorage,
 							serversReplicationState,
 							logAppender,

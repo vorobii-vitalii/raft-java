@@ -8,6 +8,6 @@ import raft.dto.RequestVoteReply;
 public record RequestVoteRequestMessage(RequestVote requestVote, Consumer<RequestVoteReply> replyConsumer) implements RaftMessage {
 	@Override
 	public RaftMessageType getType() {
-		return RaftMessageType.RequestVoteRequestMessage;
+		return RaftMessageType.REQUEST_VOTE_REQUEST_MESSAGE;
 	}
 }

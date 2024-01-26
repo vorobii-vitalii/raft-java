@@ -8,6 +8,6 @@ import raft.dto.AppendEntriesRequest;
 public record AppendEntriesRequestMessage(AppendEntriesRequest request, Consumer<AppendEntriesReply> replyConsumer) implements RaftMessage  {
 	@Override
 	public RaftMessageType getType() {
-		return RaftMessageType.AppendEntriesRequestMessage;
+		return RaftMessageType.APPEND_ENTRIES_REQUEST_MESSAGE;
 	}
 }

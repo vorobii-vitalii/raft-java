@@ -9,7 +9,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
@@ -23,7 +22,6 @@ import io.grpc.ServerBuilder;
 import raft.cluster.impl.ClusterRPCServiceImpl;
 import raft.cluster.impl.InMemoryClusterConfig;
 import raft.domain.NodeState;
-import raft.dto.LogId;
 import raft.grpc.LogServiceImpl;
 import raft.grpc.RaftServiceImpl;
 import raft.message.RaftMessage;
@@ -62,7 +60,10 @@ import raft.state_machine.leader.LeaderInitializer;
 import raft.state_machine.leader.LeaderRequestVoteRequestMessageHandler;
 import raft.state_machine.leader.LeaderResourceReleaser;
 import raft.state_machine.leader.LeaderSendHeartBeatHandler;
-import raft.state_machine.leader.LeaderStateData;
+import raft.state_machine.leader.data.LeaderStateData;
+import raft.state_machine.leader.data.ServersReplicationState;
+import raft.state_machine.leader.services.LogAppender;
+import raft.state_machine.leader.services.LogIdGenerator;
 import raft.storage.impl.FileElectionState;
 import raft.storage.impl.FileLogStorage;
 import raft.storage.impl.IndexFileImpl;
@@ -189,43 +190,31 @@ public class RaftNodeMain {
 
 		Supplier<State> leaderStateSupplier = () -> {
 			LeaderStateData leaderStateData = new LeaderStateData();
-			ConcurrentHashMap<Integer, LogId> maxReplicatedLogByServerId = new ConcurrentHashMap<>();
-			ConcurrentHashMap<Integer, LogId> previousLogIdByServerId = new ConcurrentHashMap<>();
+			var serversReplicationState = new ServersReplicationState(clusterConfig);
+			var logAppender = new LogAppender(clusterConfig, logStorage, electionState, clusterRPCService, raftMessageMessagePublisher);
+			var logIdGenerator = new LogIdGenerator(logStorage, electionState);
 			return new StateImpl(Map.of(
-					RaftMessageType.AppendEntriesErrorMessage, new LeaderAppendEntriesErrorMessageHandler(
-							logStorage,
-							electionState,
-							currentServerId,
-							clusterRPCService,
-							raftMessageMessagePublisher
-					),
+					RaftMessageType.AppendEntriesErrorMessage, new LeaderAppendEntriesErrorMessageHandler(logAppender),
 					RaftMessageType.AddLog, new LeaderAddLogMessageHandler(
 							logStorage,
 							electionState,
-							addressByServerId.keySet(),
-							currentServerId,
-							maxReplicatedLogByServerId,
-							clusterRPCService,
-							raftMessageMessagePublisher
+							logAppender,
+							logIdGenerator,
+							clusterConfig,
+							serversReplicationState
 					),
 					RaftMessageType.AppendEntriesRequestMessage, new LeaderAppendEntriesHandler(
 							electionState
 					),
 					RaftMessageType.AppendEntriesReplyMessage, new LeaderAppendEntriesReplyMessageHandler(
 							electionState,
-							maxReplicatedLogByServerId,
-							previousLogIdByServerId,
-							addressByServerId.keySet(),
 							logStorage,
-							currentServerId,
-							clusterRPCService,
-							raftMessageMessagePublisher
+							serversReplicationState,
+							logAppender
 					),
 					RaftMessageType.Initialize, new LeaderInitializer(
 							logStorage,
-							addressByServerId.keySet(),
-							currentServerId,
-							previousLogIdByServerId,
+							serversReplicationState,
 							raftMessageMessagePublisher,
 							new TimedMessageSenderImpl<>(timedTaskScheduler, raftMessageMessagePublisher),
 							getHeartBeatsInterval(),
@@ -240,12 +229,9 @@ public class RaftNodeMain {
 					),
 					RaftMessageType.SendHeartBeat, new LeaderSendHeartBeatHandler(
 							logStorage,
-							addressByServerId.keySet(),
-							currentServerId,
-							previousLogIdByServerId,
-							electionState,
-							clusterRPCService,
-							raftMessageMessagePublisher
+							serversReplicationState,
+							logAppender,
+							clusterConfig
 					)
 			));
 		};
